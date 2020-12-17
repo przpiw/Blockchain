@@ -2,6 +2,10 @@
 import datetime
 import hashlib
 import json
+from flask import Flask, jsonify, request
+import requests
+from uuid import uuid4
+from urllib.parse import urlparse
 
 """
 Simple representation of the blockchain
@@ -10,16 +14,23 @@ class Blockchain:
     
     def __init__(self):
         self.chain = []
+        self.transactions = [] # List that will contains transactions
         self.create_block(proof = 1, previous_hash = '0')
+        self.nodes= set()
+        
         
 # Creates a block and appends created block to the blockchain
     def create_block(self, proof, previous_hash):
+        # Create next block
         block = {'index': len(self.chain) + 1,
                  'timestamp':str(datetime.datetime.now()),
                  'proof': proof,
-                 'previous_hash': previous_hash}
-        self.chain.append(block)
+                 'previous_hash': previous_hash,
+                 'transactions': self.transactions}
+        self.transactions = [] # Clear list of the transactions
+        self.chain.append(block) # Add block to the chain
         return block
+    
 # Gets last previous block from the chain    
     def get_previous_block(self):
         return self.chain[-1]
@@ -35,10 +46,12 @@ class Blockchain:
             else:
                 new_proof += 1
         return new_proof
+    
 # Hashes given block
     def hash(self, block):
         encoded_block = json.dumps(block,sort_keys=True).encode()
         return hashlib.sha256(encoded_block).hexdigest()
+    
 # Checks validity of the blockchain
     def is_chain_vaild(self,chain):
         previous_block= chain[0]
@@ -56,6 +69,37 @@ class Blockchain:
             block_index += 1
         return True
     
+# Add transaction
+    def add_transaction(self,sender,receiver,amount):
+        self.transactions.append({'sender':sender,
+                                  'receiver':receiver,
+                                  'amount':amount})
+        previous_block = self.get_previous_block()
+        return previous_block['index'] + 1
+    
+# Add node to blockchain
+    def add_node(self,address):
+        parsed_url = urlparse(address)
+        self.nodes.add(parsed_url.netloc)
             
-
+# Concensus implementation
+    # Replace chain of all nodes that are shorter than node with longest chain
+def replace_chain(self):
+    network = self.nodes # network of all nodes
+    longest_chain = None
+    max_length = len(self.chain) # max len of chain so far
+    for node in network:
+        response = request.get(f'http://{node}/get_chain')
+        if (response.status_code == 200):
+            chain_length = response.json()['lenght']
+            chain = response.json()['chain']
+            if chain_length > max_length and self.is_chain_vaild(chain):
+                max_length = chain_length
+                longest_chain = chain
+    if longest_chain:
+        self.chain = longest_chain
+        return True
+    return False
+    
+    
 
